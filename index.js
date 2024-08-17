@@ -4,7 +4,7 @@ const port = 3000;
 
 // Define a route at /node-poc
 app.get('/node-poc', (req, res) => {
-    res.send('Hello, World!');
+    res.send('Hello, World by stage!');
 });
 
 // Start the server
