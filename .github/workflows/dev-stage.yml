@@ -1,8 +1,6 @@
 name: Deploy to Dev
-on: 
+on:
   push:
-    branches:
-      - feat/enable-code
 permissions:
       id-token: write  
       contents: read   
