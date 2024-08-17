@@ -10,7 +10,8 @@ jobs:
     name: Deploy
     runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'prod' || github.ref == 'refs/heads/stage' && 'stage' || 'dev' }}
-   
+    env:
+      GITHUB_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,14 +26,21 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-       
       - name: Create Release Tag
         if: github.ref == 'refs/heads/stage'
-        id: create-release
+        id: release-tag
+        uses: rymndhng/release-on-push-action@master
+        with:
+          bump_version_scheme: minor 
+        
+      - name: Set Tag
+        if: github.ref == 'refs/heads/stage'
+        id: set-release
         run: |
-          RELEASE_TAG="v$(date +'%Y%m%d%H%M%S')"
-          gh release create $RELEASE_TAG --target ${{ github.sha }} --title "Release $RELEASE_TAG" --notes "Release for stage environment"
-          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+          
+          echo "Got tag name ${{ steps.release.outputs.tag_name }}"
+          echo "Got release version ${{ steps.release.outputs.version }}"
+          echo "RELEASE_TAG=${{ steps.release.outputs.version }}" >> $GITHUB_ENV
 
       - name: Set Image Tag
         id: set-image-tag
@@ -53,7 +61,7 @@ jobs:
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: dev-task-def.json
+          task-definition: ${{ vars.TASK_DEF }}
           container-name: ${{ vars.CONTAINER_NAME }}
           image: ${{ steps.build-image.outputs.image }}
 
