@@ -28,6 +28,8 @@ jobs:
           echo "Selected environment: $SELECTED_ENVIRONMENT"
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
+        env:
+         name: dev
         
         with:
           
