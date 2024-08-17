@@ -1,9 +1,5 @@
 name: Deploy to Dev
 on: 
-  pull_request:
-    types: [closed]
-    branches: 
-    - develop
   push:
     branches:
     - feat/enable-code
