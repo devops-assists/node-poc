@@ -42,9 +42,9 @@ jobs:
         id: set-release
         run: |
           
-          echo "Got tag name ${{ steps.release.outputs.tag_name }}"
-          echo "Got release version ${{ steps.release.outputs.version }}"
-          echo "RELEASE_TAG=${{ steps.release.outputs.version }}" >> $GITHUB_ENV
+          echo "Got tag name ${{ steps.release-tag.outputs.tag_name }}"
+          echo "Got release version ${{ steps.release-tag.outputs.version }}"
+          echo "RELEASE_TAG=${{ steps.release-tag.outputs.version }}" >> $GITHUB_ENV
 
       - name: Set Image Tag
         id: set-image-tag
