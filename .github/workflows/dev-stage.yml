@@ -24,6 +24,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         
         with:
+          environment: dev
           role-to-assume: arn:aws:iam::${{secrets.AWS_ACCOUNT_ID}}:role/${{secrets.AWS_ROLE}}
           role-session-name: devops
           aws-region: ${{ vars.AWS_REGION }}
@@ -31,6 +32,8 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+        with:
+          environment: dev
 
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
