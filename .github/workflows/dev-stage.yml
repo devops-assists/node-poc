@@ -4,8 +4,7 @@ on:
 permissions:
       id-token: write  
       contents: read   
-env:
-  AWS_REGION: eu-central-1                #set this to your preferred AWS region, e.g. us-west-1
+                #set this to your preferred AWS region, e.g. us-west-1
 jobs:
   deploy:
     name: Deploy
@@ -27,7 +26,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::${{secrets.AWS_ACCOUNT_ID}}:role/${{secrets.AWS_ROLE}}
           role-session-name: devops
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
