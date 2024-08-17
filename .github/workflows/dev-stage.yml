@@ -4,6 +4,9 @@ on:
     types: [closed]
     branches: 
     - develop
+  push:
+   branches:
+   - feat/enable-code
 permissions:
       id-token: write  
       contents: read   
