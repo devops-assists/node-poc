@@ -1,0 +1,34 @@
+name: Fetch Versions
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read  # Ensure the workflow can read tags/releases
+
+jobs:
+  fetch-versions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Get Git Tags
+        id: get-tags
+        run: |
+          git fetch --tags
+          TAGS=$(git tag --sort=-creatordate)
+          echo "Available tags: $TAGS"
+          echo "::set-output name=tags::$TAGS"
+
+      - name: List GitHub Releases
+        id: get-releases
+        run: |
+          RELEASES=$(gh release list --limit 10 --json tagName --jq '.[].tagName')
+          echo "Available releases: $RELEASES"
+          echo "::set-output name=releases::$RELEASES"
+
+      - name: Display Tags and Releases
+        run: |
+          echo "Tags: ${{ steps.get-tags.outputs.tags }}"
+          echo "Releases: ${{ steps.get-releases.outputs.releases }}"
