@@ -16,7 +16,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Set GITHUB_ENV 
-        if: github.ref == 'refs/heads/develop'
+        #if: github.ref == 'refs/heads/develop'
         run: |
           echo "Setting GITHUB_ENV for the Dev environment..."
           echo "dev" >> $GITHUB_ENV
