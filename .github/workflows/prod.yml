@@ -1,34 +1,56 @@
-name: Fetch Versions
+name: Deploy with Selected Version
 
 on:
   workflow_dispatch:
-
+    inputs:
+      deploy_version:
+        description: 'Enter the version to deploy (e.g., tag v1.0.0 or release v1.0.0)'
+        required: true
 permissions:
-  contents: read  # Ensure the workflow can read tags/releases
+  id-token: write  
+  contents: read   
 
 jobs:
-  fetch-versions:
+  deploy:
+    name: Deploy
     runs-on: ubuntu-latest
+    environment: prod
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         
-      - name: Get Git Tags
-        id: get-tags
-        run: |
-          git fetch --tags
-          TAGS=$(git tag --sort=-creatordate)
-          echo "Available tags: $TAGS"
-          echo "::set-output name=tags::$TAGS"
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:   
+          role-to-assume: arn:aws:iam::${{secrets.AWS_ACCOUNT_ID}}:role/${{secrets.AWS_ROLE}}
+          role-session-name: devops
+          aws-region: ${{ vars.AWS_REGION }}
 
-      - name: List GitHub Releases
-        id: get-releases
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Pull and retag and push back
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          IMAGE_TAG:  ${{ github.event.inputs.deploy_version }}
         run: |
-          RELEASES=$(gh release list --limit 10 --json tagName --jq '.[].tagName')
-          echo "Available releases: $RELEASES"
-          echo "::set-output name=releases::$RELEASES"
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Display Tags and Releases
-        run: |
-          echo "Tags: ${{ steps.get-tags.outputs.tags }}"
-          echo "Releases: ${{ steps.get-releases.outputs.releases }}"
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ vars.TASK_DEF }}
+          container-name: ${{ vars.CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ vars.ECS_SERVICE }}
+          cluster: ${{ vars.ECS_CLUSTER }}
+          wait-for-service-stability: true
