@@ -1,13 +1,13 @@
 {
-    "taskDefinitionArn": "arn:aws:ecs:eu-west-1:524540894843:task-definition/node-poc:1",
+    "taskDefinitionArn": "arn:aws:ecs:eu-west-1:524540894843:task-definition/node-stage-poc:1",
     "containerDefinitions": [
         {
-            "name": "node-poc",
+            "name": "node-stage-poc",
             "image": "524540894843.dkr.ecr.eu-west-1.amazonaws.com/node-poc",
             "cpu": 0,
             "portMappings": [
                 {
-                    "name": "node-poc-3000-tcp",
+                    "name": "node-stage-poc-3000-tcp",
                     "containerPort": 3000,
                     "hostPort": 3000,
                     "protocol": "tcp",
@@ -23,7 +23,7 @@
             "logConfiguration": {
                 "logDriver": "awslogs",
                 "options": {
-                    "awslogs-group": "/ecs/node-poc",
+                    "awslogs-group": "/ecs/node-stage-poc",
                     "mode": "non-blocking",
                     "awslogs-create-group": "true",
                     "max-buffer-size": "25m",
@@ -35,7 +35,7 @@
             "systemControls": []
         }
     ],
-    "family": "node-poc",
+    "family": "node-stage-poc",
     "taskRoleArn": "arn:aws:iam::524540894843:role/EcsTaskExecutionRole",
     "executionRoleArn": "arn:aws:iam::524540894843:role/EcsTaskExecutionRole",
     "networkMode": "awsvpc",
@@ -88,7 +88,7 @@
         "cpuArchitecture": "X86_64",
         "operatingSystemFamily": "LINUX"
     },
-    "registeredAt": "2024-08-17T05:20:06.976Z",
+    "registeredAt": "2024-08-17T11:58:46.118Z",
     "registeredBy": "arn:aws:sts::524540894843:assumed-role/AWSReservedSSO_AdministratorAccess_bd6dff64938be2a3/muhammad.soban@digitify.com",
     "tags": []
 }
