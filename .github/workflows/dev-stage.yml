@@ -30,32 +30,33 @@ jobs:
           role-session-name: devops
           aws-region: ${{ vars.AWS_REGION }}
 
-
-
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Set short commit hash
+        id: set-short-hash
+        run: echo "short_hash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
       - name: Determine the new version
         id: determine_version
         run: |
-         
           PR_TITLE="${{ github.event.pull_request.title }}"
-          
           if [[ "$PR_TITLE" == "feature:"* ]]; then
             VERSION_TYPE=major
             
           elif [[ "$PR_TITLE" == "bugfix:"* ]]; then
             VERSION_TYPE=minor
+            
           elif [[ "$PR_TITLE" == "patch:"* ]]; then
             VERSION_TYPE=patch
+            
           else
             echo "Pull request title does not match expected format."
 
             exit 1
           fi
-
-          
+      
           echo "NeW version type is : $$VERSION_TYPE"
 
           echo "::set-output name=version_type::$$VERSION_TYPE"
@@ -69,19 +70,14 @@ jobs:
       - name: Set Tag
         if: github.ref == 'refs/heads/stage'
         id: set-release
-        run: |
-          
+        run: |  
           echo "Got tag name ${{ steps.release-tag.outputs.tag_name }}"
           echo "Got release version ${{ steps.release-tag.outputs.version }}"
           echo "RELEASE_TAG=${{ steps.release-tag.outputs.version }}" >> $GITHUB_ENV
 
-
-
       - name: Set Image Tag
         id: set-image-tag
         run: echo "IMAGE_TAG=${{ github.ref == 'refs/heads/stage' && env.RELEASE_TAG || env.short_hash  }}" >> $GITHUB_ENV
-
-
 
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
@@ -98,10 +94,10 @@ jobs:
           echo "CELERY_ECR_IMAGE=$ECR_REGISTRY/$CELERY_ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "SERVER_ECR_IMAGE=$ECR_REGISTRY/$SERVER_ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-
       - name: Download task definition for swivu-server
         run: |
            aws ecs describe-task-definition --task-definition  ${{ vars.SERVER_ECS_TASK_DEF }} --query taskDefinition > server_task-definition.json
+
       - name: Fill in the new image ID in the Amazon ECS task definition for  swivu-server
         id: swivu-server-task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
@@ -122,6 +118,7 @@ jobs:
       - name: Download task definition for swivu-celery
         run: |
            aws ecs describe-task-definition --task-definition  ${{ vars.CELERY_ECS_TASK_DEF }} --query taskDefinition > celery_task-definition.json
+
       - name: Fill in the new image ID in the Amazon ECS task definition for  swivu-celery
         id: swivu-celery-task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
