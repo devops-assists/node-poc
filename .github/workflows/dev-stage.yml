@@ -57,9 +57,9 @@ jobs:
             exit 1
           fi
       
-          echo "NeW version type is : $$VERSION_TYPE"
+          echo "NeW version type is : $VERSION_TYPE"
 
-          echo "::set-output name=version_type::$$VERSION_TYPE"
+          echo "::set-output name=version_type::$VERSION_TYPE"
       - name: Create Release Tag
         if: github.ref == 'refs/heads/stage'
         id: release-tag
