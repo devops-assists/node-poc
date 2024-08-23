@@ -7,11 +7,15 @@ on:
       - stage
 permissions:
   id-token: write  
-  contents: read   
+  contents: write
+  pull-requests: read 
+
+
 
 jobs:
   deploy:
     name: Deploy
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/develop' && 'dev' || github.ref == 'refs/heads/stage' && 'stage' }}
     env:
@@ -19,23 +23,48 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:   
-          role-to-assume: arn:aws:iam::${{secrets.AWS_ACCOUNT_ID}}:role/${{secrets.AWS_ROLE}}
+          role-to-assume: ${{secrets.AWS_IAM_ROLE}}
           role-session-name: devops
           aws-region: ${{ vars.AWS_REGION }}
+
+
 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Determine the new version
+        id: determine_version
+        run: |
+         
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          
+          if [[ "$PR_TITLE" == "feature:"* ]]; then
+            VERSION_TYPE=major
+            
+          elif [[ "$PR_TITLE" == "bugfix:"* ]]; then
+            VERSION_TYPE=minor
+          elif [[ "$PR_TITLE" == "patch:"* ]]; then
+            VERSION_TYPE=patch
+          else
+            echo "Pull request title does not match expected format."
+
+            exit 1
+          fi
+
+          
+          echo "NeW version type is : $$VERSION_TYPE"
+
+          echo "::set-output name=version_type::$$VERSION_TYPE"
       - name: Create Release Tag
         if: github.ref == 'refs/heads/stage'
         id: release-tag
         uses: rymndhng/release-on-push-action@master
         with:
-          bump_version_scheme: minor 
+          bump_version_scheme: ${{ steps.determine_version.outputs.version_type }}
         
       - name: Set Tag
         if: github.ref == 'refs/heads/stage'
@@ -46,33 +75,67 @@ jobs:
           echo "Got release version ${{ steps.release-tag.outputs.version }}"
           echo "RELEASE_TAG=${{ steps.release-tag.outputs.version }}" >> $GITHUB_ENV
 
+
+
       - name: Set Image Tag
         id: set-image-tag
-        run: echo "IMAGE_TAG=${{ github.ref == 'refs/heads/stage' && env.RELEASE_TAG || github.sha }}" >> $GITHUB_ENV
+        run: echo "IMAGE_TAG=${{ github.ref == 'refs/heads/stage' && env.RELEASE_TAG || env.short_hash  }}" >> $GITHUB_ENV
+
+
 
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          SERVER_ECR_REPOSITORY: ${{ vars.SERVER_ECR_REPOSITORY }}
+          CELERY_ECR_REPOSITORY: ${{vars.CELERY_ECR_REPOSITORY}}
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          docker build -t $ECR_REGISTRY/$SERVER_ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REGISTRY/$SERVER_ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$CELERY_ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$SERVER_ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$CELERY_ECR_REPOSITORY:$IMAGE_TAG
+          echo "CELERY_ECR_IMAGE=$ECR_REGISTRY/$CELERY_ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "SERVER_ECR_IMAGE=$ECR_REGISTRY/$SERVER_ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Fill in the new image ID in the Amazon ECS task definition
-        id: task-def
+
+      - name: Download task definition for swivu-server
+        run: |
+           aws ecs describe-task-definition --task-definition  ${{ vars.SERVER_ECS_TASK_DEF }} --query taskDefinition > server_task-definition.json
+      - name: Fill in the new image ID in the Amazon ECS task definition for  swivu-server
+        id: swivu-server-task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: ${{ vars.TASK_DEF }}
-          container-name: ${{ vars.CONTAINER_NAME }}
-          image: ${{ steps.build-image.outputs.image }}
+          task-definition: server_task-definition.json
+          container-name: ${{ vars.SERVER_CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.SERVER_ECR_IMAGE }}
 
-      - name: Deploy Amazon ECS task definition
+      - name: Deploy Amazon ECS task definition for swivu-server-task-def
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
-          task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: ${{ vars.ECS_SERVICE }}
+          task-definition: ${{ steps.swivu-server-task-def.outputs.task-definition }}
+          service: ${{ vars.SERVER_ECS_SERVICE }}
+          cluster: ${{ vars.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+
+      - name: Download task definition for swivu-celery
+        run: |
+           aws ecs describe-task-definition --task-definition  ${{ vars.CELERY_ECS_TASK_DEF }} --query taskDefinition > celery_task-definition.json
+      - name: Fill in the new image ID in the Amazon ECS task definition for  swivu-celery
+        id: swivu-celery-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: celery_task-definition.json
+          container-name: ${{ vars.CELERY_CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.CELERY_ECR_IMAGE }}
+
+
+
+      - name: Deploy Amazon ECS task definition for swivu-celery-task-def
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.swivu-celery-task-def.outputs.task-definition }}
+          service: ${{ vars.CELERY_ECS_SERVICE }}
           cluster: ${{ vars.ECS_CLUSTER }}
           wait-for-service-stability: true
