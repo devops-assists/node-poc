@@ -2,10 +2,7 @@ name: Deploy to Production
 
 on:
   workflow_dispatch:
-    inputs:
-      backend_deploy_version:
-        description: 'Enter the Stable Backend Applicaiton version to deploy on PROD (e.g., tag v1.0.0 or release v1.0.0)'
-        required: true
+    
 permissions:
   id-token: write  
   contents: read   
@@ -18,7 +15,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
+      - name: Get the latest release version
+        id: get_latest_release
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const latestRelease = await github.rest.repos.getLatestRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            core.setOutput('latest_release', latestRelease.data.tag_name);  
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:   
@@ -40,7 +46,7 @@ jobs:
         with:
           task-definition: server_task-definition.json
           container-name: ${{ vars.SERVER_CONTAINER_NAME }}
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ vars.SERVER_ECR_REPOSITORY }}:${{ github.event.inputs.backend_deploy_version }}
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ vars.SERVER_ECR_REPOSITORY }}:${{ steps.get_latest_release.outputs.latest_release }}
 
       - name: Deploy Amazon ECS task definition for swivu-server-task-def
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
@@ -61,7 +67,7 @@ jobs:
         with:
           task-definition: celery_task-definition.json
           container-name: ${{ vars.CELERY_CONTAINER_NAME }}
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ vars.CELERY_ECR_REPOSITORY }}:${{ github.event.inputs.backend_deploy_version }}
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ vars.CELERY_ECR_REPOSITORY }}:${{ steps.get_latest_release.outputs.latest_release }}
 
 
 
