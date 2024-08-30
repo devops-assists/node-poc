@@ -24,7 +24,7 @@ jobs:
          echo "::set-output name=tag::$latest_tag"
             
       - name: Print release tag value
-        run: echo "The latest release tag i ${{ steps.get_latest_release.outputs.latest_tag }}"
+        run: echo "The latest release tag i ${{ steps.get_latest_release.outputs.tag }}"
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:   
