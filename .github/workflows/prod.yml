@@ -32,7 +32,7 @@ jobs:
   # sample code  to print the value of the tag for one repository       
       - name: Print release tag value
         run: |
-          mono_release={{ steps.get_latest_release.outputs.mono_tag }}
+          mono_release=${{ steps.get_latest_release.outputs.mono_tag }}
           echo "The latest release tag of backend $mono_release"
           echo "The latest release tag of mono ${{ steps.get_latest_release.outputs.mono_tag }}"
           echo "The latest release tag of scheduler ${{ steps.get_latest_release.outputs.scheduler_tag }}"
