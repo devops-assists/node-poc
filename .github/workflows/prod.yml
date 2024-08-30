@@ -12,19 +12,16 @@ jobs:
     name: Deploy
     runs-on: ubuntu-latest
     environment: prod
+    env:
+      GITHUB_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Get the latest release version
+      - name: Get latest release tag
         id: get_latest_release
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const latestRelease = await github.rest.repos.getLatestRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo
-            });
-            core.setOutput('latest_release', latestRelease.data.tag_name); 
+        run: |
+         latest_tag=$(curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" https://api.github.com/repos/devops-assists/node-poc/releases/latest | jq -r .tag_name)
+         echo "::set-output name=tag::$latest_tag"
             
       - name: Print release tag value
         run: echo "The latest release tag i ${{ steps.get_latest_release.outputs.latest_release }}"
