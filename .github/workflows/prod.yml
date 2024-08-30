@@ -25,9 +25,10 @@ jobs:
           backend_tag=$(curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" https://api.github.com/repos/devops-assists/node-poc/releases/latest | jq -r .tag_name)
           mono_tag=$(curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" https://api.github.com/repos/devops-assists/node-poc/releases/latest | jq -r .tag_name)
           scheduler_tag=$(curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" https://api.github.com/repos/devops-assists/node-poc/releases/latest | jq -r .tag_name)
-          echo "::set-output name=backend_tag::$backend_tag"
-          echo "::set-output name=mono_tag::$mono_tag"
-          echo "::set-output name=scheduler_tag::$scheduler_tag"
+          echo "backend_tag=$backend_tag" >> $GITHUB_OUTPUT
+          echo "mono_tag=$mono_tag" >> $GITHUB_OUTPUT
+          echo "scheduler_tag=$scheduler_tag" >> $GITHUB_OUTPUT
+          
   # sample code  to print the value of the tag for one repository       
       - name: Print release tag value
         run: |
