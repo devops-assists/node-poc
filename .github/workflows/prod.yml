@@ -17,14 +17,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+  #Get the latest release tag
       - name: Get latest release tag
         id: get_latest_release
-        run: |
-         latest_tag=$(curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" https://api.github.com/repos/devops-assists/node-poc/releases/latest | jq -r .tag_name)
-         echo "::set-output name=tag::$latest_tag"
-            
+  # sample code to get the tag for one of the repositories
+        run: |      
+          backend_tag=$(curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" https://api.github.com/repos/devops-assists/node-poc/releases/latest | jq -r .tag_name)
+          mono_tag=$(curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" https://api.github.com/repos/devops-assists/node-poc/releases/latest | jq -r .tag_name)
+          scheduler_tag=$(curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" https://api.github.com/repos/devops-assists/node-poc/releases/latest | jq -r .tag_name)
+          echo "::set-output name=backend_tag::$backend_tag"
+          echo "::set-output name=mono_tag::$mono_tag"
+          echo "::set-output name=scheduler_tag::$scheduler_tag"
+  # sample code  to print the value of the tag for one repository       
       - name: Print release tag value
-        run: echo "The latest release tag i ${{ steps.get_latest_release.outputs.tag }}"
+        run: |
+          echo "The latest release tag of backend ${{ steps.get_latest_release.outputs.backend_tag }}"
+          echo "The latest release tag of mono ${{ steps.get_latest_release.outputs.mono_tag }}"
+          echo "The latest release tag of scheduler ${{ steps.get_latest_release.outputs.scheduler_tag }}"
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:   
@@ -46,7 +55,7 @@ jobs:
         with:
           task-definition: server_task-definition.json
           container-name: ${{ vars.SERVER_CONTAINER_NAME }}
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ vars.SERVER_ECR_REPOSITORY }}:${{ steps.get_latest_release.outputs.latest_release }}
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ vars.SERVER_ECR_REPOSITORY }}:${{ steps.get_latest_release.outputs.backend_tag }}
 
       - name: Deploy Amazon ECS task definition for swivu-server-task-def
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
@@ -67,7 +76,7 @@ jobs:
         with:
           task-definition: celery_task-definition.json
           container-name: ${{ vars.CELERY_CONTAINER_NAME }}
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ vars.CELERY_ECR_REPOSITORY }}:${{ steps.get_latest_release.outputs.latest_release }}
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ vars.CELERY_ECR_REPOSITORY }}:${{ steps.get_latest_release.outputs.backend_tag }}
 
 
 
